@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<extension method="upgrade" version="3.2" type="plugin" group="vmpayment">
+    <name>VM Payment - RBKmoney Payment</name>
+    <author>RBKmoney</author>
+    <creationDate>18.04.2017</creationDate>
+    <license>http://www.gnu.org/licenses/gpl-2.0.html GNU/GPL</license>
+    <authorUrl>www.rbk.money</authorUrl>
+    <version>3.0.0</version>
+    <description><![CDATA[<a href="https://rbk.money/" target="_blank">rbk.money</a>]]></description>
+
+    <files>
+        <filename plugin="rbkmoneypayment">rbkmoneypayment.php</filename>
+    </files>
+
+    <vmconfig>
+        <fields name="params">
+            <fieldset name="top" label="Настройки магазина" description="Введите данные из личного кабинета RBKmoney">
+                <field name="shop_id" type="text" label="Номер магазина продавца" description="Номер магазина в системе RBKmoney"/>
+                <field name="private_key" type="textarea" label="Приватный ключ" description="Приватный ключ для проведения оплаты"/>
+                <field name="callback_public_key" type="textarea" label="Публичный ключ для авторизации уведомлений" description="Публичный ключ для авторизации уведомлений о статусе оплаты"/>
+                <field name="form_company_name" type="text" label="Название компании в платежной форме" description="Название компании отображаемое в платежной форме"/>
+                <field name="form_path_img_logo" type="text" label="Логотип в платежной форме" description="Путь до изображения логотипа магазина отображаемого в платежной форме"/>
+                <field name="callback_url" type="textarea" label="URL для оповещения о платеже" description="Этот адрес необходимо будет добавить в настройках личного кабинета в системе RBKmoney" rows="3" cols="50" disabled="disabled" default="http://YOUR_SITE/index.php?option=com_virtuemart&amp;view=pluginresponse&amp;task=pluginnotification&amp;pm=rbkmoney"/>
+            </fieldset>
+
+            <fieldset name="middle" label="Статусы заказа" description="Выберите нужные статусы заказов" addfieldpath="/administrator/components/com_virtuemart/fields">
+                <field name="status_pending" type="vmorderstate" scope="com_virtuemart" default="P" label="Статус созданных заказов" description="Статус заказа для созданных счетов"/>
+                <field name="status_success" type="vmorderstate" scope="com_virtuemart" default="C" label="Статус оплаченных заказов" description="Статус заказа при полной оплате счета"/>
+                <field name="status_canceled" type="vmorderstate" scope="com_virtuemart" default="X" label="Статус неудавшихся заказов" description="Статус заказа при неудачной оплате"/>
+            </fieldset>
+
+            <fieldset name="footer" label="Дополнительные настройки" description="Дополнительные настройки модуля" addfieldpath="/administrator/components/com_virtuemart/fields">
+                <field name="countries" type="vmcountries" scope="com_virtuemart" default="" label="Страны Для который будет использован данный метод оплаты" description="Страны Для который будет использован данный метод оплаты."/>
+                <field name="min_amount" type="text" label="Минимальная сумма" description="Минимальная сумма заказа для оссущетвления даннаго платежа"/>
+                <field name="max_amount" type="text" label="Максимальная сумма" description="Максимальная сумма заказа для оссущетвления даннаго платежа"/>
+
+                <field name="tax_id" type="vmtaxes" scope="com_virtuemart" label="Налог" description="Налог"/>
+            </fieldset>
+        </fields>
+    </vmconfig>
+</extension>
