@@ -15,11 +15,14 @@
     <vmconfig>
         <fields name="params">
             <fieldset name="top" label="Настройки магазина" description="Введите данные из личного кабинета RBKmoney">
-                <field name="shop_id" type="text" label="Номер магазина продавца" description="Номер магазина в системе RBKmoney"/>
-                <field name="private_key" type="textarea" label="Приватный ключ" description="Приватный ключ для проведения оплаты"/>
-                <field name="callback_public_key" type="textarea" label="Публичный ключ для авторизации уведомлений" description="Публичный ключ для авторизации уведомлений о статусе оплаты"/>
-                <field name="form_company_name" type="text" label="Название компании в платежной форме" description="Название компании отображаемое в платежной форме"/>
-                <field name="form_path_img_logo" type="text" label="Логотип в платежной форме" description="Путь до изображения логотипа магазина отображаемого в платежной форме"/>
+                <field name="shop_id" type="text" label="ID магазина" description="Номер магазина в системе RBKmoney"/>
+                <field name="private_key" type="textarea" label="Ваш ключ для доступа к API" description="Ваш ключ для доступа к API из https://dashboard.rbk.money/api/key"/>
+                <field name="callback_public_key" type="textarea" label="Ключ подписи получаемых на Webhook уведомлений" description="Ключ подписи получаемых на Webhook уведомлений из https://dashboard.rbk.money/api/webhooks"/>
+                <field name="form_company_name" type="text" label="Название магазина для отображения на форме оплаты" description="Название магазина для отображения на форме оплаты"/>
+                <field name="form_path_img_logo" type="text" label="URL логотипа для отображения на форме оплаты" description="URL логотипа для отображения на форме оплаты"/>
+                <field name="form_description" type="text" label="Описание в форме оплаты" description="Описание в форме оплаты"/>
+                <field name="form_css_button" type="text" label="Стилизация кнопки открытия формы оплаты" description="Стилизация кнопки открытия формы оплаты"/>
+                <field name="form_button_label" type="text" label="Текст кнопки открытия формы оплаты" description="Текст кнопки открытия формы оплаты"/>
                 <field name="callback_url" type="textarea" label="URL для оповещения о платеже" description="Этот адрес необходимо будет добавить в настройках личного кабинета в системе RBKmoney" rows="3" cols="50" disabled="disabled" default="http://YOUR_SITE/index.php?option=com_virtuemart&amp;view=pluginresponse&amp;task=pluginnotification&amp;pm=rbkmoney"/>
             </fieldset>
 

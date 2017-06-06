@@ -24,7 +24,7 @@ class plgVMPaymentRbkmoneyPayment extends vmPSPlugin
     /**
      * Payment form
      */
-    const PAYMENT_FORM_URL = 'https://checkout.rbk.money/payframe/payframe.js';
+    const PAYMENT_FORM_URL = 'https://checkout.rbk.money/checkout.js';
     const API_URL = 'https://api.rbk.money/v1/';
 
     /**
@@ -46,18 +46,23 @@ class plgVMPaymentRbkmoneyPayment extends vmPSPlugin
     /**
      * Constants for Callback
      */
-    const SHOP_ID = 'shop_id';
-    const INVOICE_ID = 'invoice_id';
-    const PAYMENT_ID = 'payment_id';
-    const AMOUNT = 'amount';
-    const CURRENCY = 'currency';
-    const CREATED_AT = 'created_at';
-    const METADATA = 'metadata';
-    const STATUS = 'status';
-    const SIGNATURE = 'HTTP_X_SIGNATURE';
+    const SIGNATURE = 'HTTP_CONTENT_SIGNATURE';
+    const SIGNATURE_ALG = 'alg';
+    const SIGNATURE_DIGEST = 'digest';
+    const SIGNATURE_PATTERN = "|alg=(\S+);\sdigest=(.*)|i";
+
+    const EVENT_TYPE = 'eventType';
+
+    const INVOICE = 'invoice';
+    const INVOICE_ID = 'id';
+    const INVOICE_SHOP_ID = 'shopID';
+    const INVOICE_METADATA = 'metadata';
+    const INVOICE_STATUS = 'status';
+    const INVOICE_AMOUNT = 'amount';
+
     const ORDER_ID = 'order_id';
-    const SESSION_ID = 'order_id';
-    const EVENT_TYPE = 'event_type';
+    const SESSION_ID = 'session_id';
+
 
     /**
      * Openssl verify
@@ -92,6 +97,9 @@ class plgVMPaymentRbkmoneyPayment extends vmPSPlugin
             'form_path_img_logo' => ['', 'string'],
             'form_company_name' => ['', 'string'],
             'callback_public_key' => ['', 'string'],
+            'form_description' => ['', 'string'],
+            'form_css_button' => ['', 'string'],
+            'form_button_label' => ['', 'string'],
 
             'invoice_id' => ['', 'string'],
 
@@ -189,18 +197,25 @@ class plgVMPaymentRbkmoneyPayment extends vmPSPlugin
 
         $dataLogo = !empty($this->_getFormPathImgLogo()) ? 'data-logo="' . $this->_getFormPathImgLogo() . '"' : '';
         $companyName = !empty($this->_getFormCompanyName()) ? 'data-name="' . $this->_getFormCompanyName() . '"' : '';
+        $buttonLabel = !empty($this->_getFormButtonLabel()) ? 'data-label="' . $this->_getFormButtonLabel() . '"' : '';
+        $description = !empty($this->_getFormDescription()) ? 'data-description="' . $this->_getFormDescription() . '"' : '';
 
-        $html = '<script src="' . static::PAYMENT_FORM_URL . '" class="rbkmoney-checkout"
+        $style = !empty($this->_getFormCssButton()) ? '<style>' . $this->_getFormCssButton() . '</style>' : '';
+
+        $formAction = JROUTE::_(JURI::root() . 'index.php?option=com_virtuemart&view=pluginresponse&task=pluginresponsereceived&on=' . $this->_getOrderId($order) . '&pm=' . $this->_getPaymentMethodId($order));
+        $form = '<form action="' . $formAction . '" method="POST">
+                    <script src="' . static::PAYMENT_FORM_URL . '" class="rbkmoney-checkout"
                     data-invoice-id="' . $invoice_id . '"
                     data-invoice-access-token="' . $access_token . '"
-                    data-endpoint-success="' . JROUTE::_(JURI::root() . 'index.php?option=com_virtuemart&view=pluginresponse&task=pluginresponsereceived&on=' . $this->_getOrderId($order) . '&pm=' . $this->_getPaymentMethodId($order)) . '"
-                    data-endpoint-fail="' . JROUTE::_(JURI::root() . 'index.php?option=com_virtuemart&view=pluginresponse&task=pluginuserpaymentcancel&on=' . $this->_getOrderId($order) . '&pm=' . $this->_getPaymentMethodId($order)) . '"
-                    data-amount="' . $this->_getTotalAmount($order, $paymentCurrency) . '"
-                    data-currency="' . $this->_getCurrencySymbolicCode($paymentCurrency) . '"
                     ' . $dataLogo . '
                     ' . $companyName . '
-                 >
-        </script>';
+                    ' . $buttonLabel . '
+                    ' . $description . '
+                    >
+                    </script>
+                </form>';
+
+        $html = $style . $form;
 
         $this->_logger(__METHOD__ . ' end');
         $cart->emptyCart(); // We delete the old stuff
@@ -272,51 +287,54 @@ class plgVMPaymentRbkmoneyPayment extends vmPSPlugin
         }
 
         $pm = JFactory::getApplication()->input->get('pm', '');
-        if($pm != 'rbkmoney' && empty($pm)) {
+        if ($pm != 'rbkmoney' && empty($pm)) {
             return FALSE;
         }
 
-        $body = file_get_contents('php://input');
+        $content = file_get_contents('php://input');
         $logs = [
             'request' => [
                 'method' => $_SERVER['REQUEST_METHOD'],
-                'data' => $body,
+                'content' => $content,
             ],
         ];
 
         if (empty($_SERVER[static::SIGNATURE])) {
-            $logs['error']['message'] = 'Signature missing';
+            $logs['error']['message'] = 'Webhook notification signature missing';
             $this->outputWithLogger(__METHOD__, $logs, $logs['error']['message']);
         }
 
-        $requiredFields = [
-            static::SHOP_ID,
-            static::INVOICE_ID,
-            static::PAYMENT_ID,
-            static::AMOUNT,
-            static::CURRENCY,
-            static::CREATED_AT,
-            static::METADATA,
-            static::STATUS,
-            static::EVENT_TYPE,
-        ];
-        $data = json_decode($body, TRUE);
+        $logs['signature'] = $_SERVER[static::SIGNATURE];
+        $logs['_current_method'] = print_r($this->_currentMethod, true);
 
-        foreach ($requiredFields as $field) {
+        $params_signature = $this->getParametersContentSignature($_SERVER[static::SIGNATURE]);
+        if (empty($params_signature[static::SIGNATURE_ALG])) {
+            $logs['error']['message'] = 'Missing required parameter ' . static::SIGNATURE_ALG;
+            $this->outputWithLogger(__METHOD__, $logs, $logs['error']['message']);
+        }
+
+        if (empty($params_signature[static::SIGNATURE_DIGEST])) {
+            $logs['error']['message'] = 'Missing required parameter ' . static::SIGNATURE_DIGEST;
+            $this->outputWithLogger(__METHOD__, $logs, $logs['error']['message']);
+        }
+
+        $required_fields = [static::INVOICE, static::EVENT_TYPE];
+        $data = json_decode($content, TRUE);
+
+        foreach ($required_fields as $field) {
             if (empty($data[$field])) {
-                $logs['error']['message'] = 'Missing a required field:' . $field;
+                $logs['error']['message'] = 'One or more required fields are missing';
                 $this->outputWithLogger(__METHOD__, $logs, $logs['error']['message']);
             }
         }
 
-        if (empty($data[static::METADATA][static::ORDER_ID])) {
-            $logs['error']['message'] = 'Missing order number';
+        if (empty($data[static::INVOICE][static::INVOICE_METADATA][static::ORDER_ID])) {
+            $logs['error']['message'] = static::ORDER_ID . ' is missing';
             $this->outputWithLogger(__METHOD__, $logs, $logs['error']['message']);
         }
 
-        $order_number = $data[static::METADATA][static::ORDER_ID];
-        $sessionId = $data[static::METADATA][static::SESSION_ID];
 
+        $order_number = $data[static::INVOICE][static::INVOICE_METADATA][static::ORDER_ID];
         $virtuemart_order_id = VirtueMartModelOrders::getOrderIdByOrderNumber($order_number);
         $payment = $this->getDataByOrderId($virtuemart_order_id);
 
@@ -335,19 +353,21 @@ class plgVMPaymentRbkmoneyPayment extends vmPSPlugin
             $this->outputWithLogger(__METHOD__, $logs, $logs['error']['message']);
         }
 
-        if (empty($data[static::METADATA][static::SESSION_ID])) {
-            $logs['error']['message'] = 'Missing session number';
+        $current_shop_id = (int)$this->_getShopId();
+        if ($data[static::INVOICE][static::INVOICE_SHOP_ID] != $current_shop_id) {
+            $logs['error']['message'] = static::INVOICE_SHOP_ID . ' is missing';
             $this->outputWithLogger(__METHOD__, $logs, $logs['error']['message']);
         }
 
-        $signature = base64_decode($_SERVER[static::SIGNATURE]);
-        if (!$this->verificationSignature($body, $signature, $this->_getCallbackPublicKey())) {
-            $logs['error']['message'] = 'Signature no verification '. $this->_getCallbackPublicKey();
+        $signature = $this->urlSafeB64decode($params_signature[static::SIGNATURE_DIGEST]);
+        if (!$this->verificationSignature($content, $signature, $this->_getCallbackPublicKey())) {
+            $logs['public_key'] = $this->_getCallbackPublicKey();
+            $logs['error']['message'] = 'Webhook notification signature mismatch';
             $this->outputWithLogger(__METHOD__, $logs, $logs['error']['message']);
         }
 
-        if ($data[static::SHOP_ID] != $this->_currentMethod->shop_id) {
-            $logs['error']['message'] = 'Store number does not match';
+        if (empty($data[static::INVOICE][static::INVOICE_METADATA][static::SESSION_ID])) {
+            $logs['error']['message'] = static::SESSION_ID . ' is missing';
             $this->outputWithLogger(__METHOD__, $logs, $logs['error']['message']);
         }
 
@@ -355,7 +375,7 @@ class plgVMPaymentRbkmoneyPayment extends vmPSPlugin
         $order['virtuemart_order_id'] = $virtuemart_order_id;
         $order['customer_notified'] = 1;
 
-        switch ($data[static::STATUS]) {
+        switch ($data[static::INVOICE][static::INVOICE_STATUS]) {
             case 'paid':
                 $logs['order_payment'] = 'Order has been paid';
                 $order['comments'] = JTExt::sprintf('Your payment for order %s has been confirmed by RBKmoney', $order_number);
@@ -375,8 +395,9 @@ class plgVMPaymentRbkmoneyPayment extends vmPSPlugin
         $modelOrder->updateStatusForOneOrder($virtuemart_order_id, $order, TRUE);
 
         // remove vmcart
+        $sessionId = $data[static::INVOICE][static::INVOICE_METADATA][static::SESSION_ID];
         $this->emptyCart($sessionId);
-        $this->outputWithLogger(__METHOD__, $logs, 'OK', static::HTTP_CODE_OK, self::TYPE_MESSAGE);
+        $this->outputWithLogger(__METHOD__, $logs, 'OK', static::HTTP_CODE_OK, static::TYPE_MESSAGE);
         return TRUE;
     }
 
@@ -619,15 +640,13 @@ class plgVMPaymentRbkmoneyPayment extends vmPSPlugin
     }
 
     /**
-     * TODO: uncomment currency
      * @param $paymentCurrency
      * @return string
      */
     private function _getCurrencySymbolicCode($paymentCurrency)
     {
         /*** @var CurrencyDisplay $paymentCurrency * */
-        //  return $paymentCurrency->_vendorCurrency_code_3;
-        return 'RUB';
+        return $paymentCurrency->_vendorCurrency_code_3;
     }
 
 
@@ -642,22 +661,37 @@ class plgVMPaymentRbkmoneyPayment extends vmPSPlugin
 
     private function _getPrivateKey()
     {
-        return trim($this->_currentMethod->private_key);
+        return trim(strip_tags($this->_currentMethod->private_key));
     }
 
     private function _getFormPathImgLogo()
     {
-        return trim($this->_currentMethod->form_path_img_logo);
+        return trim(strip_tags($this->_currentMethod->form_path_img_logo));
+    }
+
+    private function _getFormDescription()
+    {
+        return trim(strip_tags($this->_currentMethod->form_description));
+    }
+
+    private function _getFormCssButton()
+    {
+        return trim(strip_tags($this->_currentMethod->form_css_button));
+    }
+
+    private function _getFormButtonLabel()
+    {
+        return trim(strip_tags($this->_currentMethod->form_button_label));
     }
 
     private function _getFormCompanyName()
     {
-        return trim($this->_currentMethod->form_company_name);
+        return trim(strip_tags($this->_currentMethod->form_company_name));
     }
 
     private function _getCallbackPublicKey()
     {
-        return trim($this->_currentMethod->callback_public_key);
+        return trim(strip_tags($this->_currentMethod->callback_public_key));
     }
 
 
@@ -679,12 +713,11 @@ class plgVMPaymentRbkmoneyPayment extends vmPSPlugin
         $response = $this->_send($url, $this->_getHeaders(), '', 'access_tokens');
 
         if ($response['http_code'] != static::HTTP_CODE_CREATED) {
-            throw new Exception('Возникла ошибка при создания токена для инвойса');
+            throw new Exception('An error occurred while creating Invoice Access Token');
         }
 
         $response_decode = json_decode($response['body'], true);
         $access_token = !empty($response_decode['payload']) ? $response_decode['payload'] : '';
-
         return $access_token;
     }
 
@@ -713,14 +746,13 @@ class plgVMPaymentRbkmoneyPayment extends vmPSPlugin
         $response = $this->_send($url, $this->_getHeaders(), json_encode($data), 'init_invoice');
 
         if ($response['http_code'] != static::HTTP_CODE_CREATED) {
-            $message = 'Возникла ошибка при создания инвойса';
+            $message = 'An error occurred while creating invoice';
             $this->_logger($message, 'ERROR');
             throw new Exception($message);
         }
 
         $response_decode = json_decode($response['body'], true);
         $invoice_id = !empty($response_decode['id']) ? $response_decode['id'] : '';
-
         return $invoice_id;
     }
 
@@ -783,7 +815,6 @@ class plgVMPaymentRbkmoneyPayment extends vmPSPlugin
         $headers[] = 'Authorization: Bearer ' . $this->_getPrivateKey();
         $headers[] = 'Content-type: application/json; charset=utf-8';
         $headers[] = 'Accept: application/json';
-
         return $headers;
     }
 
@@ -854,8 +885,26 @@ class plgVMPaymentRbkmoneyPayment extends vmPSPlugin
         if (!empty($query_params)) {
             $url .= '?' . http_build_query($query_params);
         }
-
         return $url;
+    }
+
+    public function urlSafeB64decode($string)
+    {
+        $data = str_replace(array('-', '_'), array('+', '/'), $string);
+        $mod4 = strlen($data) % 4;
+        if ($mod4) {
+            $data .= substr('====', $mod4);
+        }
+        return base64_decode($data);
+    }
+
+    public function getParametersContentSignature($content_signature)
+    {
+        preg_match_all(static::SIGNATURE_PATTERN, $content_signature, $matches, PREG_PATTERN_ORDER);
+        $params = array();
+        $params[static::SIGNATURE_ALG] = !empty($matches[1][0]) ? $matches[1][0] : '';
+        $params[static::SIGNATURE_DIGEST] = !empty($matches[2][0]) ? $matches[2][0] : '';
+        return $params;
     }
 
     /**
@@ -887,7 +936,7 @@ class plgVMPaymentRbkmoneyPayment extends vmPSPlugin
     /**
      * Logger
      *
-     * Path "administrator/logs" to store log information
+     * Path "administrator/index.php?option=com_virtuemart&view=log" to store log information
      *
      * @param $text
      * @param string $type
@@ -908,7 +957,7 @@ class plgVMPaymentRbkmoneyPayment extends vmPSPlugin
      */
     private function outputWithLogger($method, &$logs, $message, $header = self::HTTP_CODE_BAD_REQUEST, $type = self::TYPE_ERROR)
     {
-        $response = ['message' => $message];
+        $response = array('message' => $message);
         $this->_logger($method . PHP_EOL . print_r($logs, true), $type);
         http_response_code($header);
         echo json_encode($response);
