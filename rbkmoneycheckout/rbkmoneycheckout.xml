@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<extension method="upgrade" version="3.2" type="plugin" group="vmpayment">
+    <name>VM Payment - RBKmoney Checkout</name>
+    <author>RBKmoney</author>
+    <creationDate>18.04.2017</creationDate>
+    <license>http://www.gnu.org/licenses/gpl-2.0.html GNU/GPL</license>
+    <authorUrl>www.rbk.money</authorUrl>
+    <version>3.0.0</version>
+    <description><![CDATA[<a href="https://rbk.money/" target="_blank">rbk.money</a>]]></description>
+
+    <files>
+        <filename plugin="rbkmoneycheckout">rbkmoneycheckout.php</filename>
+        <folder>language</folder>
+    </files>
+
+    <vmconfig>
+        <fields name="params">
+
+            <fieldset name="top" label="VMPAYMENT_RBKMONEY_CHECKOUT_TOP_LABEL" description="VMPAYMENT_RBKMONEY_CHECKOUT_TOP_DESC">
+                <field name="shop_id" type="text" label="VMPAYMENT_RBKMONEY_CHECKOUT_TOP_SHOP_ID_LABEL" description="VMPAYMENT_RBKMONEY_CHECKOUT_TOP_SHOP_ID_DESC"/>
+                <field name="private_key" type="textarea" label="VMPAYMENT_RBKMONEY_CHECKOUT_TOP_API_KEY_LABEL" description="VMPAYMENT_RBKMONEY_CHECKOUT_TOP_API_KEY_DESC"/>
+                <field name="callback_public_key" type="textarea" label="VMPAYMENT_RBKMONEY_CHECKOUT_TOP_WEBHOOK_KEY_LABEL" description="VMPAYMENT_RBKMONEY_CHECKOUT_TOP_WEBHOOK_KEY_DESC"/>
+                <field name="form_company_name" type="text" label="VMPAYMENT_RBKMONEY_CHECKOUT_TOP_PAYFORM_COMPANY_NAME_LABEL" description="VMPAYMENT_RBKMONEY_CHECKOUT_TOP_PAYFORM_COMPANY_NAME_DESC"/>
+                <field name="form_description" type="text" label="VMPAYMENT_RBKMONEY_CHECKOUT_TOP_PAYFORM_DESCRIPTION_LABEL" description="VMPAYMENT_RBKMONEY_CHECKOUT_TOP_PAYFORM_DESCRIPTION_DESC"/>
+                <field name="form_css_button" type="text" label="VMPAYMENT_RBKMONEY_CHECKOUT_TOP_PAYFORM_BUTTON_CSS_LABEL" description="VMPAYMENT_RBKMONEY_CHECKOUT_TOP_PAYFORM_BUTTON_CSS_DESC"/>
+                <field name="form_button_label" type="text" label="VMPAYMENT_RBKMONEY_CHECKOUT_TOP_PAYFORM_BUTTON_LABEL_LABEL" description="VMPAYMENT_RBKMONEY_CHECKOUT_TOP_PAYFORM_BUTTON_LABEL_DESC"/>
+                <field name="callback_url" type="textarea" label="VMPAYMENT_RBKMONEY_CHECKOUT_TOP_WEBHOOK_CALLBACK_LABEL" description="VMPAYMENT_RBKMONEY_CHECKOUT_TOP_WEBHOOK_CALLBACK_DESC" rows="3" cols="50" disabled="disabled" default="http://YOUR_SITE/index.php?option=com_virtuemart&amp;view=pluginresponse&amp;task=pluginnotification&amp;pm=rbkmoneycheckout"/>
+            </fieldset>
+
+            <fieldset name="middle" label="VMPAYMENT_RBKMONEY_CHECKOUT_MIDDLE_LABEL" description="VMPAYMENT_RBKMONEY_CHECKOUT_MIDDLE_DESC" addfieldpath="/administrator/components/com_virtuemart/fields">
+                <field name="status_pending" type="vmorderstate" scope="com_virtuemart" default="P" label="VMPAYMENT_RBKMONEY_CHECKOUT_MIDDLE_STATUS_PENDING_LABEL" description="VMPAYMENT_RBKMONEY_CHECKOUT_MIDDLE_STATUS_PENDING_DESC"/>
+                <field name="status_success" type="vmorderstate" scope="com_virtuemart" default="C" label="VMPAYMENT_RBKMONEY_CHECKOUT_MIDDLE_STATUS_SUCCESS_LABEL" description="VMPAYMENT_RBKMONEY_CHECKOUT_MIDDLE_STATUS_SUCCESS_DESC"/>
+                <field name="status_canceled" type="vmorderstate" scope="com_virtuemart" default="X" label="VMPAYMENT_RBKMONEY_CHECKOUT_MIDDLE_STATUS_CANCELLED_LABEL" description="VMPAYMENT_RBKMONEY_CHECKOUT_MIDDLE_STATUS_CANCELLED_DESC"/>
+            </fieldset>
+
+            <fieldset name="footer" label="VMPAYMENT_RBKMONEY_CHECKOUT_FOOTER_LABEL" description="VMPAYMENT_RBKMONEY_CHECKOUT_FOOTER_DESC" addfieldpath="/administrator/components/com_virtuemart/fields">
+                <field name="countries" type="vmcountries" scope="com_virtuemart" default="" label="VMPAYMENT_RBKMONEY_CHECKOUT_FOOTER_COUNTRIES_LABEL" description="VMPAYMENT_RBKMONEY_CHECKOUT_FOOTER_COUNTRIES_DESC"/>
+                <field name="min_amount" type="text" label="VMPAYMENT_RBKMONEY_CHECKOUT_FOOTER_MIN_AMOUNT_LABEL" description="VMPAYMENT_RBKMONEY_CHECKOUT_FOOTER_MIN_AMOUNT_DESC"/>
+                <field name="max_amount" type="text" label="VMPAYMENT_RBKMONEY_CHECKOUT_FOOTER_MAX_AMOUNT_LABEL" description="VMPAYMENT_RBKMONEY_CHECKOUT_FOOTER_MAX_AMOUNT_DESC"/>
+
+                <field name="tax_id" type="vmtaxes" scope="com_virtuemart" label="VMPAYMENT_RBKMONEY_CHECKOUT_FOOTER_TAXES_LABEL" description="VMPAYMENT_RBKMONEY_CHECKOUT_FOOTER_TAXES_DESC"/>
+            </fieldset>
+        </fields>
+    </vmconfig>
+</extension>
