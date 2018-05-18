@@ -724,7 +724,6 @@ class plgVMPaymentRbkmoneyCheckout extends vmPSPlugin
      */
     private function _createInvoice($order, $paymentCurrency)
     {
-        // TODO: add cart with tax
         $data = [
             'shopID' => $this->_getShopId(),
             'amount' => $this->_prepareAmount($this->_getTotalAmount($order, $paymentCurrency)),
@@ -733,6 +732,7 @@ class plgVMPaymentRbkmoneyCheckout extends vmPSPlugin
             'currency' => $this->_getCurrencySymbolicCode($paymentCurrency),
             'product' => $this->_getOrderId($order),
             'description' => $this->_productDetails($order),
+            'cart' => $this->_prepareCart($order),
         ];
 
         $url = $this->_prepareApiUrl('processing/invoices');
@@ -825,6 +825,123 @@ class plgVMPaymentRbkmoneyCheckout extends vmPSPlugin
             'order_id' => $this->_getOrderId($order),
             'session_id' => $this->_getSessionId(),
         ];
+    }
+
+
+    /**
+     * Prepare cart
+     *
+     * @param array $order Object
+     *
+     * @return array
+     */
+    private function _prepareCart($order)
+    {
+        $items = $this->_prepareItemsForCart($order);
+        $shipping = $this->_prepareShippingForCart($order);
+        return array_merge($shipping, $items);
+
+    }
+
+    private function _prepareItemsForCart($order)
+    {
+        $lines = array();
+
+        foreach ($order['items'] as $product) {
+            $item = array();
+
+            if($product->product_final_price > 0.0) {
+                $item['product'] = $product->product_name;
+                $item['quantity'] = (int)$product->product_quantity;
+
+                $amount = $product->product_final_price;
+                $price = number_format($amount, 2, '.', '');
+                $item['price'] = $this->_prepareAmount(round($price, 2));
+
+                if (!empty($product->allPrices[0]['VatTax'][1][1])) {
+
+                    $taxRate = $this->_getTaxRate($product->allPrices[0]['VatTax'][1][1]);
+                    if($taxRate != null) {
+                        $taxMode = array(
+                            'type' => 'InvoiceLineTaxVAT',
+                            'rate' => $taxRate
+                        );
+
+                        $item['taxMode'] = $taxMode;
+                    }
+                }
+
+                $lines[] = $item;
+            }
+        }
+
+        return $lines;
+    }
+
+    private function _prepareShippingForCart($order)
+    {
+        if(!empty($order['details']['BT']->order_shipment) && $order['details']['BT']->order_shipment > 0) {
+            $lines = array();
+            $item['product'] = vmText::_('VMPAYMENT_RBKMONEY_CHECKOUT_SHIPMENT');
+
+            $price = $order['details']['BT']->order_shipment + $order['details']['BT']->order_shipment_tax;
+            $item['price'] = $this->_prepareAmount(round($price, 2));
+            $item['quantity'] = 1;
+
+            $taxRate = $this->_getShipmentTaxRate($order);
+            if (!empty($taxRate)) {
+
+                $taxRate = $this->_getTaxRate($taxRate);
+                if($taxRate != null) {
+                    $taxMode = array(
+                        'type' => 'InvoiceLineTaxVAT',
+                        'rate' => $taxRate
+                    );
+                    $item['taxMode'] = $taxMode;
+                }
+            }
+
+            $lines[] = $item;
+        }
+
+        return $lines;
+    }
+
+    private function _getShipmentTaxRate($order) {
+        foreach ($order['calc_rules'] as $product) {
+            if ($product->calc_kind == 'shipment') {
+                return $product->calc_value;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Get tax rate
+     *
+     * @param $rate
+     * @return null|string
+     */
+    private function _getTaxRate($rate)
+    {
+        switch ($rate) {
+            // НДС чека по ставке 0%;
+            case 0:
+                return '0%';
+                break;
+            // НДС чека по ставке 10%;
+            case 10:
+                return '10%';
+                break;
+            // НДС чека по ставке 18%;
+            case 18:
+                return '18%';
+                break;
+            default: # — без НДС;
+                return null;
+                break;
+        }
     }
 
     /**
