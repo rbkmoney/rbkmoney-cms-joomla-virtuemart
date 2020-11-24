@@ -880,8 +880,8 @@ class plgVMPaymentRbkmoneyCheckout extends vmPSPlugin
 
     private function _prepareShippingForCart($order)
     {
+        $lines = array();
         if(!empty($order['details']['BT']->order_shipment) && $order['details']['BT']->order_shipment > 0) {
-            $lines = array();
             $item['product'] = vmText::_('VMPAYMENT_RBKMONEY_CHECKOUT_SHIPMENT');
 
             $price = $order['details']['BT']->order_shipment + $order['details']['BT']->order_shipment_tax;
